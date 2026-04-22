@@ -34,7 +34,8 @@
           Share2, Copy, Check, Trash2, Save,
           MoreVertical, Filter, Database as FileSearch,
           CornerUpRight, Undo2, Bot, Sparkles, Loader2,
-          Download, Eye, AlertCircle, KeyRound, ExternalLink
+          Download, Eye, AlertCircle, KeyRound, ExternalLink,
+          Phone, Clock, Mail, LifeBuoy
         } from 'lucide-react';
 
         // --- КОНСТАНТЫ СИСТЕМЫ ---
@@ -557,6 +558,9 @@
                       <button onClick={() => {setCurrentView('messenger'); setIsComposing(false)}} className={`w-full flex items-center p-3 rounded-xl font-bold text-[9px] uppercase tracking-widest transition-all ${currentView === 'messenger' ? 'bg-blue-600/20 text-blue-400' : 'text-slate-500 hover:text-white'}`}>
                         <MessageSquare size={16} className="mr-3" /> Мессенджер
                       </button>
+                      <button onClick={() => {setCurrentView('support'); setIsComposing(false)}} className={`w-full flex items-center p-3 rounded-xl font-bold text-[9px] uppercase tracking-widest transition-all ${currentView === 'support' ? 'bg-blue-600/20 text-blue-400' : 'text-slate-500 hover:text-white'}`}>
+                        <LifeBuoy size={16} className="mr-3" /> Тех. поддержка
+                      </button>
                     </div>
                   )}
                   <button onClick={() => setIsAiOpen(!isAiOpen)} className={`w-full flex items-center p-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all mt-4 border border-dashed border-white/20 hover:bg-white/5 ${isAiOpen ? 'text-blue-400 border-blue-400/50' : 'text-slate-500'}`}>
@@ -575,7 +579,7 @@
                 <header className="px-8 py-5 border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
                   <div className="flex items-center gap-4">
                     <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800">
-                      ТВПК / {currentView === 'profile' ? 'ПРОФИЛЬ' : isComposing ? 'РАССЫЛКА' : 'СООБЩЕНИЯ'}
+                      ТВПК / {currentView === 'profile' ? 'ПРОФИЛЬ' : currentView === 'support' ? 'ПОДДЕРЖКА' : isComposing ? 'РАССЫЛКА' : 'СООБЩЕНИЯ'}
                     </h2>
                     {chatsHistory.length > 0 && (
                       <button onClick={undoCommand} className="flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[9px] font-bold uppercase transition-all">
@@ -608,6 +612,51 @@
                             </div>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  ) : currentView === 'support' ? (
+                    <div className="h-full p-10 overflow-auto flex justify-center">
+                      <div className="w-full max-w-2xl bg-white rounded-3xl p-10 border border-slate-100 shadow-xl flex flex-col h-max">
+                         <div className="flex items-center gap-4 mb-8">
+                            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600"><LifeBuoy size={32}/></div>
+                            <div>
+                               <h3 className="text-xl font-black uppercase text-slate-900 tracking-tight">Техническая поддержка</h3>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Центр системного администрирования ТВПК</p>
+                            </div>
+                         </div>
+                         <div className="grid grid-cols-1 gap-4">
+                            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-md transition-all">
+                               <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-blue-500"><Mail size={20}/></div>
+                                  <div>
+                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">E-mail адрес</p>
+                                     <p className="text-sm font-bold text-slate-800 tracking-tight">admin_test@thpc.edu.kz</p>
+                                  </div>
+                               </div>
+                               <button onClick={() => handleCopy('admin_test@thpc.edu.kz', 'support-email')} className="p-2 text-slate-400 hover:text-blue-600">{copiedId === 'support-email' ? <Check size={16}/> : <Copy size={16}/>}</button>
+                            </div>
+                            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-md transition-all">
+                               <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-green-500"><Phone size={20}/></div>
+                                  <div>
+                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Контактный номер</p>
+                                     <p className="text-sm font-bold text-slate-800 tracking-tight">+7 (777) 000-00-00</p>
+                                  </div>
+                               </div>
+                               <button onClick={() => handleCopy('+77770000000', 'support-phone')} className="p-2 text-slate-400 hover:text-green-600">{copiedId === 'support-phone' ? <Check size={16}/> : <Copy size={16}/>}</button>
+                            </div>
+                            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-center group hover:bg-white hover:shadow-md transition-all">
+                               <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm text-orange-500 mr-4"><Clock size={20}/></div>
+                               <div>
+                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">График работы</p>
+                                  <p className="text-sm font-bold text-slate-800 tracking-tight">Круглосуточно 24/7</p>
+                               </div>
+                            </div>
+                         </div>
+                         <div className="mt-8 p-4 border border-dashed border-slate-200 rounded-2xl flex items-center gap-4">
+                            <AlertCircle size={20} className="text-slate-400 shrink-0"/>
+                            <p className="text-[10px] font-medium text-slate-500 uppercase leading-relaxed tracking-tight">При возникновении критических ошибок доступа, пожалуйста, используйте официальный запрос через мессенджер с пометкой <span className="font-bold text-slate-900 underline">"СРОЧНО"</span>.</p>
+                         </div>
                       </div>
                     </div>
                   ) : (
