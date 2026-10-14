@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="ru" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Журнал учёта ключей (1-100) — Единый QR</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Font & Font Awesome Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+    <!-- QRCode.js for Client-side QR Rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        @media print {
+            body * {
+                visibility: hidden !important;
+            }
+            #universal-qr-modal, #universal-qr-modal * {
+                visibility: visible !important;
+            }
+            #universal-qr-modal {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                background: white !important;
+                overflow: visible !important;
+                backdrop-filter: none !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-poster {
+                border: 3px dashed #334155 !important;
+                padding: 2rem !important;
+                border-radius: 1.5rem !important;
+                background: white !important;
+                color: black !important;
+            }
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+    <header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-tr from-indigo-600 to-violet-600 p-2.5 rounded-2xl shadow-lg shadow-indigo-500/20 text-white flex items-center justify-center">
+                    <i class="fa-solid fa-key text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg leading-tight tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Учёт ключей кабинетов</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">1 – 100</span>
+                    </h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Журнал с Единым QR-кодом и выгрузкой в Excel</p>
+                </div>
+            </div>
+
+            <!-- Stats Badges -->
+            <div class="flex items-center space-x-2 text-xs font-medium">
+                <div class="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-1.5 flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+                    <span class="text-slate-500 dark:text-slate-400">Всего:</span>
+                    <span class="text-slate-900 dark:text-white font-bold text-xs sm:text-sm" id="stat-total">100</span>
+                </div>
+                <div class="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 rounded-xl px-3 py-1.5 flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-emerald-700 dark:text-emerald-300">В наличии:</span>
+                    <span class="text-emerald-800 dark:text-emerald-200 font-bold text-xs sm:text-sm" id="stat-free">100</span>
+                </div>
+                <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-xl px-3 py-1.5 flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span class="text-amber-700 dark:text-amber-300">Выдано:</span>
+                    <span class="text-amber-800 dark:text-amber-200 font-bold text-xs sm:text-sm" id="stat-taken">0</span>
+                </div>
+            </div>
+
+            <!-- Action Controls & Theme Toggle -->
+            <div class="flex items-center space-x-2">
+                <!-- Single Universal QR Button -->
+                <button onclick="openUniversalQrModal()" title="Показать один единый QR-код для всех кабинетов" class="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-qrcode text-sm"></i>
+                    <span>Единый QR для вахты</span>
+                </button>
+
+                <!-- Excel Export Button -->
+                <button onclick="exportToExcel()" title="Экспорт отчёта в Excel" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-md shadow-emerald-500/20 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-file-excel text-sm"></i>
+                    <span class="hidden sm:inline">Excel</span>
+                </button>
+
+                <!-- History Log Button -->
+                <button onclick="openHistoryModal()" title="Просмотр истории выдачи и сдачи ключей" class="bg-slate-700 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-md transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-clock-rotate-left text-sm"></i>
+                    <span class="hidden sm:inline">История</span>
+                </button>
+
+                <!-- Dark / Light Theme Toggle -->
+                <button onclick="toggleTheme()" title="Переключить тему оформления" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-200 dark:border-slate-700/60">
+                    <i class="fa-solid fa-sun text-sm hidden dark:block"></i>
+                    <i class="fa-solid fa-moon text-sm block dark:hidden"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Universal QR Banner -->
+        <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-3xl p-5 shadow-xl flex flex-col md:flex-row items-center justify-between gap-5 relative overflow-hidden">
+            <div class="space-y-1.5 z-10">
+                <div class="inline-flex items-center space-x-2 bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Один QR-код на всю вахту</span>
+                </div>
+                <h2 class="text-lg sm:text-xl font-bold tracking-tight">Преподаватель сканирует QR на телефоне</h2>
+                <p class="text-xs sm:text-sm text-indigo-200/80 max-w-xl">
+                    Разместите табличку с единым QR-кодом. Преподаватель открывает камеру смартфона, вводит номер своего кабинета (1–100) и своё ФИО для выдачи или сдачи ключа.
+                </p>
+            </div>
+            <div class="flex items-center space-x-3 z-10 shrink-0">
+                <button onclick="openUniversalQrModal()" class="px-5 py-3 bg-white text-indigo-950 hover:bg-indigo-50 rounded-2xl font-bold text-xs shadow-lg transition flex items-center space-x-2">
+                    <i class="fa-solid fa-qrcode text-base text-indigo-600"></i>
+                    <span>Открыть QR для сканирования</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Search and Filters Bar -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 transition-colors">
+            
+            <!-- Search Input -->
+            <div class="relative w-full md:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="search-input" oninput="handleSearch()" placeholder="Поиск кабинета или ФИО..." class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition text-slate-800 dark:text-slate-100 placeholder-slate-400">
+            </div>
+
+            <!-- Filter Status Buttons -->
+            <div class="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl w-full md:w-auto text-xs font-medium">
+                <button onclick="setFilter('all')" id="filter-all" class="flex-1 md:flex-none px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm transition">
+                    Все (100)
+                </button>
+                <button onclick="setFilter('free')" id="filter-free" class="flex-1 md:flex-none px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
+                    <i class="fa-solid fa-check text-emerald-500 mr-1"></i>В наличии
+                </button>
+                <button onclick="setFilter('taken')" id="filter-taken" class="flex-1 md:flex-none px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
+                    <i class="fa-solid fa-user text-amber-500 mr-1"></i>На руках
+                </button>
+            </div>
+
+            <!-- Quick Floor Selectors -->
+            <div class="flex items-center space-x-1 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 text-xs">
+                <span class="text-slate-400 mr-1 font-medium text-[11px] uppercase tracking-wider">Этаж:</span>
+                <button onclick="setFloor('all')" id="floor-all" class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-800/50">Все</button>
+                <button onclick="setFloor(1)" id="floor-1" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">1 (1-25)</button>
+                <button onclick="setFloor(2)" id="floor-2" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">2 (26-50)</button>
+                <button onclick="setFloor(3)" id="floor-3" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">3 (51-75)</button>
+                <button onclick="setFloor(4)" id="floor-4" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">4 (76-100)</button>
+            </div>
+        </div>
+
+        <!-- Cabinets Grid (1 to 100) -->
+        <div id="rooms-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10 gap-3">
+            <!-- Dynamically populated via JS -->
+        </div>
+
+        <!-- Empty Search Result State -->
+        <div id="empty-state" class="hidden text-center py-12 space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center text-xl">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </div>
+            <p class="text-sm font-medium text-slate-600 dark:text-slate-400">Кабинеты не найдены по вашему запросу</p>
+        </div>
+    </main>
+
+    <div id="universal-qr-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-md w-full mx-4 p-6 text-center space-y-4 transform transition-transform scale-95 duration-200" id="universal-qr-card">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 no-print">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-qrcode text-indigo-600 text-lg"></i>
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base">Единый QR-код для вахты</h3>
+                </div>
+                <button onclick="closeUniversalQrModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 w-8 h-8 rounded-xl flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Local file warning alert -->
+            <div id="local-file-warning" class="hidden no-print p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 text-left space-y-1">
+                <div class="flex items-center space-x-2 text-amber-800 dark:text-amber-300 font-bold text-xs">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+                    <span>Внимание: Почему пишет «Непригодные данные»?</span>
+                </div>
+                <p class="text-[11px] text-amber-700 dark:text-amber-400 leading-tight">
+                    Страница открыта как локальный файл (<code class="font-mono bg-amber-100 dark:bg-amber-900/60 px-1 rounded">file://</code>). Телефон не имеет доступа к локальному диску вашего компьютера. <b>Вставьте в поле ниже ссылку на ваш сайт или IP-адрес ПК в сети.</b>
+                </p>
+            </div>
+
+            <!-- Printable Poster Content -->
+            <div class="print-poster space-y-4 py-2">
+                <div class="space-y-1">
+                    <p class="text-xs font-bold tracking-wider text-indigo-600 uppercase">Журнал учёта ключей</p>
+                    <h4 class="text-xl font-extrabold text-slate-900 dark:text-white">Отсканируйте камерой</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">для самостоятельной выдачи или сдачи ключа</p>
+                </div>
+
+                <div class="flex justify-center p-4 bg-white rounded-2xl border-2 border-slate-200 shadow-inner w-56 h-56 mx-auto items-center" id="universal-qrcode-container">
+                    <!-- Dynamic QR generated here -->
+                </div>
+
+                <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 text-left text-xs space-y-1 text-slate-600 dark:text-slate-300">
+                    <p class="font-semibold text-slate-800 dark:text-white flex items-center">
+                        <i class="fa-solid fa-circle-info text-indigo-500 mr-1.5"></i>Инструкция для преподавателя:
+                    </p>
+                    <ol class="list-decimal list-inside text-[11px] space-y-0.5 opacity-90 pl-1">
+                        <li>Наведите камеру смартфона на QR-код</li>
+                        <li>Укажите номер кабинета (1 – 100)</li>
+                        <li>Введите ваше ФИО и нажмите <b>«Взять»</b> или <b>«Сдать»</b></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="space-y-2.5 no-print text-left">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        URL-адрес для QR-кода (укажите ваш сайт или IP):
+                    </label>
+                    <div class="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <input type="text" id="universal-qr-url" oninput="updateQrFromInput()" class="bg-transparent text-[11px] text-slate-800 dark:text-slate-200 flex-1 px-2 focus:outline-none font-mono" placeholder="https://example.com/index.html">
+                        <button onclick="copyUniversalUrl()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition shrink-0">
+                            <i class="fa-regular fa-copy mr-1"></i>Копия
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="window.print()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-print"></i>
+                    <span>Распечатать табличку на вахту</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Phone Self-Service Form Modal -->
+    <div id="mobile-form-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-sm w-full mx-4 p-5 space-y-5 transform transition-transform scale-95 duration-200" id="mobile-form-card">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-950/80 text-sky-600 dark:text-sky-400 font-bold flex items-center justify-center">
+                        <i class="fa-solid fa-mobile-screen-button text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 dark:text-white text-sm sm:text-base">Форма сдачи / выдачи</h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Быстрый ввод со смартфона</p>
+                    </div>
+                </div>
+                <button onclick="closeMobileFormModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 w-8 h-8 rounded-xl flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Form Fields -->
+            <div class="space-y-4">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Номер кабинета (1 - 100):
+                    </label>
+                    <div class="relative">
+                        <i class="fa-solid fa-door-closed absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="number" id="mobile-room-input" min="1" max="100" oninput="handleMobileRoomInput()" placeholder="Введите номер (например, 15)" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white">
+                    </div>
+
+                    <div id="mobile-room-status-badge" class="hidden p-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors">
+                        <!-- Dynamic status info -->
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        ФИО Преподавателя / Сотрудника:
+                    </label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user-pen absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" id="mobile-teacher-input" list="teachers-datalist" placeholder="Например: Смирнова А.В." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white">
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <p class="text-[11px] text-slate-400">Быстрый выбор преподавателя:</p>
+                    <div class="flex flex-wrap gap-1.5" id="mobile-quick-teachers">
+                        <!-- Quick teacher tags -->
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <button onclick="submitMobileAction('take')" class="py-3 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-500/20 transition flex flex-col items-center justify-center space-y-1">
+                        <i class="fa-solid fa-key text-base"></i>
+                        <span>🔑 Взять ключ</span>
+                    </button>
+                    <button onclick="submitMobileAction('return')" class="py-3 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-500/20 transition flex flex-col items-center justify-center space-y-1">
+                        <i class="fa-solid fa-box-archive text-base"></i>
+                        <span>📦 Сдать ключ</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Modal -->
+    <div id="action-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-md w-full mx-4 p-6 space-y-5 transform transition-transform scale-95 duration-200" id="action-modal-card">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-bold text-lg flex items-center justify-center" id="modal-room-badge">
+                        --
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 dark:text-white text-base" id="modal-title">Кабинет №--</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400" id="modal-subtitle">Управление выдачей ключа</p>
+                    </div>
+                </div>
+                <button onclick="closeActionModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 w-8 h-8 rounded-xl flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Issue Key Form Section -->
+            <div id="modal-take-section" class="space-y-4">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">ФИО Преподавателя / Работника:</label>
+                    <div class="relative">
+                        <input type="text" id="teacher-input" list="teachers-datalist" placeholder="Начните вводить ФИО..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder-slate-400">
+                        <datalist id="teachers-datalist">
+                            <!-- Dynamically populated -->
+                        </datalist>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-slate-500 dark:text-slate-400">Быстрый выбор:</label>
+                    <div class="flex flex-wrap gap-1.5" id="quick-teachers-list">
+                        <!-- Quick teacher tags -->
+                    </div>
+                </div>
+
+                <button onclick="submitModalAction('take')" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-indigo-500/25 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-key"></i>
+                    <span>Выдать ключ (Взял)</span>
+                </button>
+            </div>
+
+            <!-- Return Key Form Section -->
+            <div id="modal-return-section" class="space-y-4 hidden">
+                <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 space-y-2">
+                    <div class="flex items-center space-x-2 font-semibold text-sm">
+                        <i class="fa-solid fa-user-lock text-amber-600"></i>
+                        <span>Ключ выдан на руки</span>
+                    </div>
+                    <div class="text-xs space-y-1">
+                        <p><span class="opacity-70">Преподаватель:</span> <strong id="modal-current-teacher" class="font-bold">--</strong></p>
+                        <p><span class="opacity-70">Время выдачи:</span> <strong id="modal-current-time">--</strong></p>
+                    </div>
+                </div>
+
+                <button onclick="submitModalAction('return')" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-emerald-500/25 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-box-archive"></i>
+                    <span>Принять ключ (Сдал)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Operations History Log Modal -->
+    <div id="history-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-2xl w-full mx-4 h-[75vh] flex flex-col overflow-hidden">
+            
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center">
+                        <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 dark:text-white text-base">История операций</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Хронология выдачи и сдачи ключей</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="clearHistory()" class="text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 px-3 py-1.5 rounded-xl text-xs font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/40 transition">
+                        <i class="fa-regular fa-trash-can mr-1"></i>Очистить
+                    </button>
+                    <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 w-8 h-8 rounded-xl flex items-center justify-center hover:bg-slate-200/50 dark:hover:bg-slate-800">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4">
+                <div class="space-y-2" id="history-list">
+                    <!-- Dynamic history rows -->
+                </div>
+                <div id="history-empty" class="hidden text-center py-12 text-xs text-slate-400">
+                    История операций пока пуста
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <script>
+        // Constants & State Initialization
+        const TOTAL_ROOMS = 100;
+        const DEFAULT_TEACHERS = [
+            "Иванов И.И.", "Петрова А.С.", "Сидоров В.М.", "Смирнова Е.В.", 
+            "Кузнецов Д.А.", "Васильева Н.П.", "Попов С.Н.", "Соколова М.А."
+        ];
+
+        let rooms = [];
+        let historyLogs = [];
+        let currentFilter = 'all';
+        let currentFloor = 'all';
+        let searchQuery = '';
+        let activeRoomId = null;
+
+        // On DOM Content Loaded
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            loadStateFromStorage();
+            if (rooms.length === 0 || rooms.length !== TOTAL_ROOMS) {
+                initRooms();
+            }
+            renderGrid();
+            updateStats();
+            updateTeachersDatalist();
+            checkUrlParams();
+
+            // Real-time Storage Event Listener
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'key_management_rooms_100' || e.key === 'key_management_history_100') {
+                    loadStateFromStorage();
+                    renderGrid();
+                    updateStats();
+                }
+            });
+        });
+
+        function initRooms() {
+            rooms = [];
+            for (let i = 1; i <= TOTAL_ROOMS; i++) {
+                rooms.push({
+                    id: i,
+                    status: 'free',
+                    teacher: '',
+                    takenAt: null
+                });
+            }
+            saveStateToStorage();
+        }
+
+        function loadStateFromStorage() {
+            try {
+                const savedRooms = localStorage.getItem('key_management_rooms_100');
+                if (savedRooms) rooms = JSON.parse(savedRooms);
+                
+                const savedHistory = localStorage.getItem('key_management_history_100');
+                if (savedHistory) historyLogs = JSON.parse(savedHistory);
+            } catch (e) {
+                console.error("Storage load error:", e);
+                initRooms();
+            }
+        }
+
+        function saveStateToStorage() {
+            try {
+                localStorage.setItem('key_management_rooms_100', JSON.stringify(rooms));
+                localStorage.setItem('key_management_history_100', JSON.stringify(historyLogs));
+            } catch (e) {
+                console.error("Storage save error:", e);
+            }
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        function checkUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isMobileMode = urlParams.get('mobile') === '1' || window.location.hash === '#mobile';
+            
+            if (isMobileMode) {
+                setTimeout(() => {
+                    openMobileFormModal();
+                    showToast('Добро пожаловать! Введите номер кабинета и ФИО', 'info');
+                }, 300);
+            }
+        }
+
+        function getUniversalScanUrl() {
+            const savedCustomUrl = localStorage.getItem('key_management_custom_qr_url');
+            if (savedCustomUrl && savedCustomUrl.trim()) {
+                let url = savedCustomUrl.trim();
+                if (!url.includes('mobile=1')) {
+                    url += (url.includes('?') ? '&' : '?') + 'mobile=1#mobile';
+                }
+                return url;
+            }
+
+            const isLocal = window.location.protocol === 'file:' || 
+                            window.location.hostname === 'localhost' || 
+                            window.location.hostname === '127.0.0.1';
+
+            const baseUrl = isLocal ? window.location.href.split('?')[0].split('#')[0] : (window.location.protocol + '//' + window.location.host + window.location.pathname);
+            return `${baseUrl}?mobile=1#mobile`;
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('rooms-grid');
+            const emptyState = document.getElementById('empty-state');
+            if (!grid) return;
+
+            grid.innerHTML = '';
+            let visibleCount = 0;
+
+            rooms.forEach(room => {
+                if (currentFilter === 'free' && room.status !== 'free') return;
+                if (currentFilter === 'taken' && room.status !== 'taken') return;
+
+                if (currentFloor === 1 && (room.id < 1 || room.id > 25)) return;
+                if (currentFloor === 2 && (room.id < 26 || room.id > 50)) return;
+                if (currentFloor === 3 && (room.id < 51 || room.id > 75)) return;
+                if (currentFloor === 4 && (room.id < 76 || room.id > 100)) return;
+
+                if (searchQuery) {
+                    const matchId = room.id.toString().includes(searchQuery);
+                    const matchTeacher = room.teacher.toLowerCase().includes(searchQuery.toLowerCase());
+                    if (!matchId && !matchTeacher) return;
+                }
+
+                visibleCount++;
+                const card = document.createElement('div');
+                const isTaken = room.status === 'taken';
+
+                card.className = `relative p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer group flex flex-col justify-between h-32 ${
+                    isTaken 
+                    ? 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/60 hover:shadow-md hover:shadow-amber-500/10' 
+                    : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md'
+                }`;
+
+                card.onclick = () => openActionModal(room.id);
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <span class="font-bold text-base sm:text-lg ${isTaken ? 'text-amber-900 dark:text-amber-200' : 'text-slate-800 dark:text-white'}">
+                            № ${room.id}
+                        </span>
+                        <span class="w-2.5 h-2.5 rounded-full ${isTaken ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}"></span>
+                    </div>
+
+                    <div class="my-auto space-y-0.5">
+                        ${isTaken ? `
+                            <p class="text-xs font-semibold text-amber-800 dark:text-amber-300 truncate" title="${room.teacher}">
+                                <i class="fa-solid fa-user text-[10px] mr-1"></i>${room.teacher}
+                            </p>
+                            <p class="text-[10px] text-amber-600/80 dark:text-amber-400/70 font-mono">
+                                ${room.takenAt ? new Date(room.takenAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                            </p>
+                        ` : `
+                            <p class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                <i class="fa-solid fa-circle-check text-[10px] mr-1"></i>В наличии
+                            </p>
+                        `}
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800/60 text-[11px]">
+                        <span class="text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition font-medium">
+                            ${isTaken ? 'Сдать' : 'Выдать'}
+                        </span>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-slate-300 dark:text-slate-600 group-hover:text-indigo-500 transition"></i>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+
+            if (emptyState) {
+                if (visibleCount === 0) emptyState.classList.remove('hidden');
+                else emptyState.classList.add('hidden');
+            }
+        }
+
+        function updateStats() {
+            const freeCount = rooms.filter(r => r.status === 'free').length;
+            const takenCount = rooms.filter(r => r.status === 'taken').length;
+
+            document.getElementById('stat-total').textContent = TOTAL_ROOMS;
+            document.getElementById('stat-free').textContent = freeCount;
+            document.getElementById('stat-taken').textContent = takenCount;
+        }
+
+        function setFilter(type) {
+            currentFilter = type;
+            ['all', 'free', 'taken'].forEach(f => {
+                const btn = document.getElementById(`filter-${f}`);
+                if (btn) {
+                    if (f === type) {
+                        btn.className = 'flex-1 md:flex-none px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm transition font-semibold';
+                    } else {
+                        btn.className = 'flex-1 md:flex-none px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+                    }
+                }
+            });
+            renderGrid();
+        }
+
+        function setFloor(floor) {
+            currentFloor = floor;
+            ['all', 1, 2, 3, 4].forEach(f => {
+                const btn = document.getElementById(`floor-${f}`);
+                if (btn) {
+                    if (f === floor) {
+                        btn.className = 'px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-800/50';
+                    } else {
+                        btn.className = 'px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700';
+                    }
+                }
+            });
+            renderGrid();
+        }
+
+        function handleSearch() {
+            const input = document.getElementById('search-input');
+            if (input) {
+                searchQuery = input.value.trim();
+                renderGrid();
+            }
+        }
+
+        function openUniversalQrModal() {
+            const modal = document.getElementById('universal-qr-modal');
+            const card = document.getElementById('universal-qr-card');
+            const urlInput = document.getElementById('universal-qr-url');
+            const warningBox = document.getElementById('local-file-warning');
+
+            const isLocal = window.location.protocol === 'file:' || 
+                            window.location.hostname === 'localhost' || 
+                            window.location.hostname === '127.0.0.1';
+
+            if (warningBox) {
+                if (isLocal) warningBox.classList.remove('hidden');
+                else warningBox.classList.add('hidden');
+            }
+
+            const scanUrl = getUniversalScanUrl();
+            if (urlInput) urlInput.value = scanUrl;
+
+            renderQrCode(scanUrl);
+
+            if (modal) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    if (card) card.classList.remove('scale-95');
+                }, 10);
+            }
+        }
+
+        function renderQrCode(scanUrl) {
+            const container = document.getElementById('universal-qrcode-container');
+            if (!container) return;
+
+            container.innerHTML = '';
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(container, {
+                    text: scanUrl,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#0f172a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            } else {
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(scanUrl)}`;
+                img.alt = "Universal QR Code";
+                img.className = 'w-48 h-48 rounded-xl';
+                container.appendChild(img);
+            }
+        }
+
+        function updateQrFromInput() {
+            const input = document.getElementById('universal-qr-url');
+            if (!input) return;
+            
+            const newUrl = input.value.trim();
+            if (newUrl) {
+                localStorage.setItem('key_management_custom_qr_url', newUrl);
+                renderQrCode(newUrl);
+            }
+        }
+
+        function closeUniversalQrModal() {
+            const modal = document.getElementById('universal-qr-modal');
+            const card = document.getElementById('universal-qr-card');
+            if (modal) {
+                modal.classList.add('opacity-0');
+                if (card) card.classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            }
+        }
+
+        function copyUniversalUrl() {
+            const input = document.getElementById('universal-qr-url');
+            if (input) {
+                input.select();
+                document.execCommand('copy');
+                showToast('Ссылка скопирована!', 'success');
+            }
+        }
+
+        function openMobileFormModal() {
+            const modal = document.getElementById('mobile-form-modal');
+            const card = document.getElementById('mobile-form-card');
+            
+            renderMobileQuickTeachers();
+            handleMobileRoomInput();
+
+            if (modal) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    if (card) card.classList.remove('scale-95');
+                }, 10);
+            }
+        }
+
+        function closeMobileFormModal() {
+            const modal = document.getElementById('mobile-form-modal');
+            const card = document.getElementById('mobile-form-card');
+            if (modal) {
+                modal.classList.add('opacity-0');
+                if (card) card.classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            }
+        }
+
+        function handleMobileRoomInput() {
+            const input = document.getElementById('mobile-room-input');
+            const badge = document.getElementById('mobile-room-status-badge');
+            if (!input || !badge) return;
+
+            const roomNum = parseInt(input.value, 10);
+            if (isNaN(roomNum) || roomNum < 1 || roomNum > TOTAL_ROOMS) {
+                badge.classList.add('hidden');
+                return;
+            }
+
+            const room = rooms.find(r => r.id === roomNum);
+            if (!room) return;
+
+            badge.classList.remove('hidden');
+            if (room.status === 'taken') {
+                badge.className = 'p-2.5 rounded-xl text-xs font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800/50 flex items-center justify-between';
+                badge.innerHTML = `
+                    <span><i class="fa-solid fa-user-lock mr-1.5"></i>На руках: <b>${room.teacher}</b></span>
+                    <span class="text-[10px] opacity-70">Сдать</span>
+                `;
+            } else {
+                badge.className = 'p-2.5 rounded-xl text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between';
+                badge.innerHTML = `
+                    <span><i class="fa-solid fa-circle-check mr-1.5 text-emerald-600"></i>Ключ в наличии</span>
+                    <span class="text-[10px] opacity-70">Свободен</span>
+                `;
+            }
+        }
+
+        function renderMobileQuickTeachers() {
+            const container = document.getElementById('mobile-quick-teachers');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const list = DEFAULT_TEACHERS.slice(0, 4);
+            list.forEach(t => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'px-2 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs transition';
+                btn.textContent = t;
+                btn.onclick = () => {
+                    const input = document.getElementById('mobile-teacher-input');
+                    if (input) input.value = t;
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function submitMobileAction(type) {
+            const roomInput = document.getElementById('mobile-room-input');
+            const teacherInput = document.getElementById('mobile-teacher-input');
+
+            const roomNum = parseInt(roomInput ? roomInput.value : '', 10);
+            const teacherName = teacherInput ? teacherInput.value.trim() : '';
+
+            if (isNaN(roomNum) || roomNum < 1 || roomNum > TOTAL_ROOMS) {
+                showToast('Укажите корректный номер кабинета (1–100)', 'error');
+                return;
+            }
+
+            if (type === 'take') {
+                if (!teacherName) {
+                    showToast('Введите ФИО преподавателя', 'error');
+                    return;
+                }
+                takeKeyInternal(roomNum, teacherName);
+            } else if (type === 'return') {
+                returnKeyInternal(roomNum);
+            }
+
+            if (teacherInput) teacherInput.value = '';
+            closeMobileFormModal();
+        }
+
+        function openActionModal(roomId) {
+            activeRoomId = roomId;
+            const room = rooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            const modal = document.getElementById('action-modal');
+            const card = document.getElementById('action-modal-card');
+            const title = document.getElementById('modal-title');
+            const subtitle = document.getElementById('modal-subtitle');
+            const badge = document.getElementById('modal-room-badge');
+            
+            const takeSection = document.getElementById('modal-take-section');
+            const returnSection = document.getElementById('modal-return-section');
+
+            if (title) title.textContent = `Кабинет № ${room.id}`;
+            if (badge) badge.textContent = room.id;
+
+            if (room.status === 'taken') {
+                if (subtitle) subtitle.textContent = 'Возврат ключа на вахту';
+                takeSection.classList.add('hidden');
+                returnSection.classList.remove('hidden');
+
+                document.getElementById('modal-current-teacher').textContent = room.teacher;
+                document.getElementById('modal-current-time').textContent = room.takenAt ? new Date(room.takenAt).toLocaleString('ru-RU') : '--';
+            } else {
+                if (subtitle) subtitle.textContent = 'Выдача ключа преподавателю';
+                returnSection.classList.add('hidden');
+                takeSection.classList.remove('hidden');
+
+                const teacherInput = document.getElementById('teacher-input');
+                if (teacherInput) {
+                    teacherInput.value = '';
+                    setTimeout(() => teacherInput.focus(), 150);
+                }
+                renderQuickTeachers();
+            }
+
+            if (modal) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    if (card) card.classList.remove('scale-95');
+                }, 10);
+            }
+        }
+
+        function closeActionModal() {
+            const modal = document.getElementById('action-modal');
+            const card = document.getElementById('action-modal-card');
+            if (modal) {
+                modal.classList.add('opacity-0');
+                if (card) card.classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            }
+        }
+
+        function submitModalAction(type) {
+            if (!activeRoomId) return;
+
+            if (type === 'take') {
+                const input = document.getElementById('teacher-input');
+                const teacherName = input ? input.value.trim() : '';
+                if (!teacherName) {
+                    showToast('Пожалуйста, укажите ФИО преподавателя', 'error');
+                    return;
+                }
+                takeKeyInternal(activeRoomId, teacherName);
+            } else if (type === 'return') {
+                returnKeyInternal(activeRoomId);
+            }
+            closeActionModal();
+        }
+
+        function takeKeyInternal(roomId, teacherName) {
+            const room = rooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            room.status = 'taken';
+            room.teacher = teacherName;
+            room.takenAt = new Date().toISOString();
+
+            addLogRecord(roomId, teacherName, 'take');
+            saveStateToStorage();
+            updateStats();
+            renderGrid();
+            showToast(`Ключ №${roomId} выдан: ${teacherName}`, 'success');
+        }
+
+        function returnKeyInternal(roomId) {
+            const room = rooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            const teacherName = room.teacher;
+            room.status = 'free';
+            room.teacher = '';
+            room.takenAt = null;
+
+            addLogRecord(roomId, teacherName, 'return');
+            saveStateToStorage();
+            updateStats();
+            renderGrid();
+            showToast(`Ключ №${roomId} сдан на вахту`, 'info');
+        }
+
+        function updateTeachersDatalist() {
+            const datalist = document.getElementById('teachers-datalist');
+            if (!datalist) return;
+            datalist.innerHTML = '';
+            
+            const set = new Set([...DEFAULT_TEACHERS]);
+            historyLogs.forEach(h => { if(h.teacher) set.add(h.teacher); });
+
+            set.forEach(teacher => {
+                const opt = document.createElement('option');
+                opt.value = teacher;
+                datalist.appendChild(opt);
+            });
+        }
+
+        function renderQuickTeachers() {
+            const container = document.getElementById('quick-teachers-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const list = DEFAULT_TEACHERS.slice(0, 5);
+            list.forEach(t => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs transition';
+                btn.textContent = t;
+                btn.onclick = () => {
+                    const input = document.getElementById('teacher-input');
+                    if (input) input.value = t;
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function exportToExcel() {
+            const data = rooms.map(r => ({
+                'Номер Кабинета': r.id,
+                'Статус': r.status === 'taken' ? 'Выдан (На руках)' : 'В наличии (Сдан)',
+                'ФИО Преподавателя': r.teacher || '-',
+                'Время Выдачи': r.takenAt ? new Date(r.takenAt).toLocaleString('ru-RU') : '-'
+            }));
+
+            if (typeof XLSX !== 'undefined') {
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Состояние Ключей");
+                
+                if (historyLogs.length > 0) {
+                    const histData = historyLogs.map(h => ({
+                        'Дата и Время': new Date(h.timestamp).toLocaleString('ru-RU'),
+                        'Кабинет': h.roomId,
+                        'Действие': h.type === 'take' ? 'Выдача (Взял)' : 'Сдача (Сдал)',
+                        'Преподаватель': h.teacher
+                    }));
+                    const wsHist = XLSX.utils.json_to_sheet(histData);
+                    XLSX.utils.book_append_sheet(wb, wsHist, "История Операций");
+                }
+
+                XLSX.writeFile(wb, `Отчет_Ключи_Кабинеты_${new Date().toISOString().slice(0,10)}.xlsx`);
+                showToast('Excel отчёт успешно сгенерирован', 'success');
+            } else {
+                let csv = "\uFEFFНомер Кабинета;Статус;ФИО Преподавателя;Время Выдачи\n";
+                data.forEach(d => {
+                    csv += `${d['Номер Кабинета']};${d['Статус']};${d['ФИО Преподавателя']};${d['Время Выдачи']}\n`;
+                });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `Отчет_Ключи_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast('Отчёт выгружен в формате CSV', 'info');
+            }
+        }
+
+        function addLogRecord(roomId, teacher, type) {
+            const log = {
+                id: Date.now(),
+                roomId,
+                teacher,
+                type,
+                timestamp: new Date().toISOString()
+            };
+            historyLogs.unshift(log);
+            if (historyLogs.length > 200) historyLogs.pop();
+            saveStateToStorage();
+            updateTeachersDatalist();
+        }
+
+        function openHistoryModal() {
+            const modal = document.getElementById('history-modal');
+            const list = document.getElementById('history-list');
+            const empty = document.getElementById('history-empty');
+
+            if (list) {
+                list.innerHTML = '';
+                if (historyLogs.length === 0) {
+                    if (empty) empty.classList.remove('hidden');
+                } else {
+                    if (empty) empty.classList.add('hidden');
+                    historyLogs.forEach(h => {
+                        const row = document.createElement('div');
+                        const isTake = h.type === 'take';
+                        row.className = 'p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs';
+                        
+                        row.innerHTML = `
+                            <div class="flex items-center space-x-3">
+                                <span class="w-7 h-7 rounded-lg ${isTake ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-600' : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600'} font-bold flex items-center justify-center text-[11px]">
+                                    №${h.roomId}
+                                </span>
+                                <div>
+                                    <p class="font-semibold text-slate-800 dark:text-white">${h.teacher || '—'}</p>
+                                    <p class="text-[10px] text-slate-400">${new Date(h.timestamp).toLocaleString('ru-RU')}</p>
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-lg text-[10px] font-semibold ${isTake ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'}">
+                                ${isTake ? 'Взял ключ' : 'Сдал ключ'}
+                            </span>
+                        `;
+                        list.appendChild(row);
+                    });
+                }
+            }
+
+            if (modal) {
+                modal.classList.remove('hidden');
+                setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            }
+        }
+
+        function closeHistoryModal() {
+            const modal = document.getElementById('history-modal');
+            if (modal) {
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            }
+        }
+
+        function clearHistory() {
+            historyLogs = [];
+            saveStateToStorage();
+            openHistoryModal();
+            showToast('История очищена', 'info');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' 
+                ? 'bg-emerald-600 text-white' 
+                : type === 'error' 
+                ? 'bg-rose-600 text-white' 
+                : 'bg-indigo-600 text-white';
+
+            toast.className = `pointer-events-auto px-4 py-2.5 rounded-2xl shadow-xl ${bgClass} text-xs font-semibold flex items-center space-x-2 transform translate-y-4 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `
+                <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info'} text-sm"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
